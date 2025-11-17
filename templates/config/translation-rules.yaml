@@ -100,7 +100,7 @@ rules:
         ]
         */
         const actions = await $stagehand.observe('{action}')
-        expect(actions.length > 0, "actions is empty").toBe(true);
+        expect(actions.length > 0, "actions is empty").to.be.true(true);
         return actions;
       })()
     validation:

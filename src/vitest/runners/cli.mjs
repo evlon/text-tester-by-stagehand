@@ -232,6 +232,7 @@ export async function runCLI(argv = process.argv.slice(2)) {
         copy('tests/debug/runner-context.js', 'tests/debug/runner-context.js');
         copy('tests/scenarios/test.txt', 'tests/scenarios/test.txt');
         copy('vitest.config.js', 'vitest.config.js');
+        copy('.gitignore', '.gitignore');
         copy('test-data/credentials.env.example', 'test-data/credentials.env.example');
         // 添加  vitest @vitest/ui 到 devDependencies
         console.log('   pnpm add -D vitest @vitest/ui');
