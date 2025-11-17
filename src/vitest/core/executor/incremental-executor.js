@@ -6,7 +6,7 @@ import { join } from "path";
 import crypto from "crypto";
 
 const SCENARIOS_DIR = join(process.cwd(), "tests", "scenarios");
-const CACHE_FILE = join(process.cwd(), "vitest-cache.json");
+const CACHE_FILE = join(process.cwd(), "/vitest-cache.json");
 
 export class IncrementalExecutor {
   constructor() {

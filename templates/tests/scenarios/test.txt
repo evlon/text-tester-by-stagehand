@@ -1,0 +1,27 @@
+# 系统功能测试
+# 测试各种登录场景和错误处理
+
+
+
+
+## 测试用例: 百度测试
+# 断言:找到登录
+打开https://www.baidu.com
+
+"+"
+脚本:const a =3;
+const b = a+1;
+console.log(b);
+return b;
+"-"
+
+点击登录按钮
+
+"+"
+脚本:const a =3;
+const b = a+1;
+console.log(b);
+return b;
+"-"
+
+截屏保存为baidu.png

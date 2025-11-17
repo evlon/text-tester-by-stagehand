@@ -216,6 +216,9 @@ export async function runCLI(argv = process.argv.slice(2)) {
         ensureDir(join(process.cwd(), 'test-data'));
         ensureDir(join(process.cwd(), 'results'));
 
+        const selfPackageJsonPath = fileURLToPath(new URL("../../../package.json",import.meta.url));
+        const selfPackageJson = JSON.parse(fs.readFileSync(selfPackageJsonPath, 'utf-8'));
+
         const tpl = (rel) => fileURLToPath(new URL('../../../templates/' + rel, import.meta.url));
         const copy = (srcRel, destRel) => {
           const src = tpl(srcRel);
@@ -227,10 +230,49 @@ export async function runCLI(argv = process.argv.slice(2)) {
         copy('config/core.yaml', 'config/core.yaml');
         copy('config/translation-rules.yaml', 'config/translation-rules.yaml');
         copy('tests/debug/runner-context.js', 'tests/debug/runner-context.js');
+        copy('tests/scenarios/test.txt', 'tests/scenarios/test.txt');
         copy('vitest.config.js', 'vitest.config.js');
         copy('test-data/credentials.env.example', 'test-data/credentials.env.example');
+        // 添加  vitest @vitest/ui 到 devDependencies
+        console.log('   pnpm add -D vitest @vitest/ui');
+        // 添加 test:watch 到 scripts
+        /*
+          pnpm test                    运行所有测试
+  pnpm test:file <name>.txt    运行单个文件（模糊匹配）
+  pnpm test:case "用例名"      运行单个测试用例 (grep)
+  pnpm test:changed            只运行变化的测试
+  pnpm test:watch              监控模式，文件变化自动运行
+  pnpm test:debug <file.txt>   交互式调试单个文件
+  pnpm test:step "用例名"     单步调试测试用例 (近似)
+
+  pnpm config:view             查看当前配置
+  pnpm config:validate         验证配置有效性
+        */
+        const packageJson = JSON.parse(fs.readFileSync("./package.json", 'utf-8'));
+        packageJson.scripts = packageJson.scripts || {};
+        packageJson.scripts['test'] = 'npx text-tester-by-stagehand test';
+        packageJson.scripts['test:file'] = 'npx text-tester-by-stagehand test:file';
+        packageJson.scripts['test:changed'] = 'npx text-tester-by-stagehand test:changed';
+        packageJson.scripts['test:watch'] = 'npx text-tester-by-stagehand test:watch';
+        packageJson.scripts['test:build'] = 'npx text-tester-by-stagehand test:build';
+        packageJson.scripts['test:debug'] = 'npx text-tester-by-stagehand test:debug';
+        packageJson.scripts['test:step'] = 'npx text-tester-by-stagehand test:step';
+        packageJson.scripts['test:ui'] = 'npx text-tester-by-stagehand test:ui';
+        packageJson.scripts['config:view'] = 'npx text-tester-by-stagehand config:view';
+        packageJson.scripts['config:validate'] = 'npx text-tester-by-stagehand config:validate';
+        
+        // 添加 dependencies
+        packageJson.dependencies = {...packageJson.dependencies, ...selfPackageJson.dependencies};
+        packageJson.devDependencies = {...packageJson.devDependencies, ...selfPackageJson.devDependencies}
+
+        fs.writeFileSync("./package.json", JSON.stringify(packageJson, null, 2));
+
+        console.log('   添加 "test:watch": "vitest --watch" 到 package.json scripts');
+
         console.log('\n✅ 初始化完成，请复制凭据示例并编辑:');
         console.log('   cp test-data/credentials.env.example test-data/credentials.env');
+        console.log('   编辑 test-data/credentials.env 并添加您的 OpenAI API 密钥');  
+
         break;
       }
 
