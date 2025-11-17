@@ -1,0 +1,211 @@
+version: "1.0"
+# 说明, template 中,可以是用的变量如下:
+# {$page} 当前页面
+# $stagehand 当前stagehand对象,包含了一些方法, 如: $stagehand.agent, $stagehand.act, $stagehand.extract, 详见https://docs.stagehand.dev/v3/references/stagehand
+# $context 当前context对象,包含了一些方法, 如: newPage, context, getPages, activePage, setActivePage, close, 详见:https://docs.stagehand.dev/v3/references/context
+rules: 
+  - name: "goto_url"
+    patterns:
+      - "打开|{url}"
+      - "访问|{url}"
+      - "导航到|{url}"
+      - "打开|{lebel}|{url}"
+      - "访问|{lebel}|{url}"
+      - "导航到|{lebel}|{url}"
+    template: |
+      await $context.newPage('{url}');    
+    validation:
+      required: ["url"]
+
+  - name: "input_action"
+    patterns:
+      - "在{field}中输入{value}"
+    template: "await $stagehand.act('在 {field} 中输入 {value}',{$page})"
+    validation:
+      required: ["field", "value"]
+
+
+  - name: "wait_ms"
+    patterns:
+      - "等待{ms}毫秒"
+      - "等待{ms}ms"
+    template: "await new Promise(r => setTimeout(r, {ms}))"
+    validation:
+      required: ["ms"]
+
+  - name: "screenshot"
+    patterns:
+      - "截图|保存为|{imagefilename}"
+      - "截屏|保存为|{imagefilename}"
+      - "保存截图|{imagefilename}"
+    template: |
+      await (async () => {
+        // 3. 调用 screenshot() 方法
+        // 它返回一个 Promise<Buffer>
+        // { fullPage: true } 可选，用于捕获整个可滚动页面，默认为 false (只截取视口)
+        await $page.screenshot({ path: `results/{imagefilename}.png`, fullPage: true });
+        const screenshotBuffer = await $page.screenshot({ 
+              fullPage: true 
+        });
+        // 4. 定义保存路径和文件名
+        fs.mkdirSync('results/screenshots', { recursive: true });
+        const filePath = path.join(process.cwd(), "results/screenshots/{imagefilename}");        
+        // 5. 使用 fs.writeFileSync (同步) 或 fs.writeFile (异步) 将 Buffer 写入文件
+        fs.writeFileSync(filePath, screenshotBuffer);
+        return filePath;
+      })()
+    validation:
+      required: ["imagefilename"]
+
+  - name: "default_extract"
+    patterns:
+      - "摘录:|{action}"
+    template: "await $stagehand.extract('{action}')"
+    validation:
+      required: ["action"]
+
+  - name: "default_extract_with_schema"
+    patterns:
+      - "摘录:|{action}|{schema}"
+    template: "await $stagehand.extract('{action}',{schema})"
+    validation:
+      required: ["action","schema"]
+
+  - name: "default_observe"
+    patterns:
+      - "观察:|{action}"
+    template: "await $stagehand.observe('{action}')"
+    validation:
+      required: ["action"]
+
+  - name: "default_observe_expect"
+    patterns:
+      - "断言:|{action}"
+    template: |
+      await (async () => {
+        /* actions example
+        [
+          {
+            "selector": "/html/body/div[1]/header/nav/button[1]",
+            "description": "Login button in the navigation bar",
+            "method": "click",
+            "arguments": []
+          },
+          {
+            "selector": "/html/body/main/form/input[1]",
+            "description": "Email input field in the login form",
+            "method": "fill",
+            "arguments": []
+          }
+        ]
+        */
+        const actions = await $stagehand.observe('{action}')
+        expect(actions.length > 0, "actions is empty").toBe(true);
+        return actions;
+      })()
+    validation:
+      required: ["action"]
+
+  - name: "default_agent"
+    patterns:
+      - "代理:|{action}"
+    template: "await $stagehand.agent('{action}')"
+    validation:
+      required: ["action"]
+
+  - name: "context_newPage"
+    patterns:
+      - "标签:|新页面|{url}"
+      - "上下文:|新页面|{url}"
+    template: "await $context.newPage('{url}')"
+    validation:
+      required: ["url"]
+  - name: "context_pages"
+    patterns:
+      - "标签:|全部页面"
+      - "上下文:|全部页面"      
+    template: |
+      await (async () => {
+        const retArray = [];
+        const pages = $context.pages();
+        for (const $page of pages) {
+          const pageTitle = await $page.title();
+          retArray.push(pageTitle);
+        }
+        return retArray;
+      })() 
+    validation:
+      required: []
+
+  - name: "context_Pages_by_title"
+    patterns:
+      - "标签:|全部页面|{title}"
+      - "上下文:|全部页面|{title}"
+    template: |
+      await (async () => {
+        const retArray = [];
+        const pages = $context.pages();
+        for (const $page of pages) {
+          const pageTitle = await $page.title();
+          if (!title || pageTitle.includes(title)) {
+            retArray.push(pageTitle);
+          }
+        }
+        return retArray;
+      })() 
+    validation:
+      required: ["title"]
+
+  - name: "context_close_pages_by_title"
+    patterns:
+      - "标签:|关闭页面|{title}"
+      - "上下文:|关闭页面|{title}"
+    template: |
+      await (async () => {
+        const retArray = [];
+        const pages = $context.pages();
+        for (const $page of pages) {
+          const pageTitle = await $page.title();
+          if (!title || pageTitle.includes(title)) {
+            await $page.close();
+            retArray.push(pageTitle);
+          }
+        }
+        return retArray;
+      })() 
+    validation:
+      required: ["title"]
+  - name: "context_active_page_by_title"
+    patterns:
+      - "标签:|切换页面|{title}"
+      - "上下文:|切换页面|{title}"
+    template: |
+      await (async () => {
+        const pages = $context.pages();
+        for (const $page of pages) {
+          const pageTitle = await $page.title();
+          if (!title || pageTitle.includes(title)) {
+            $context.setActivePage($page);
+            const title = await $context.activePage()?.title();
+            return {title, result:true}
+          }
+        }
+        return  {title:null, result:false};
+      })() 
+    validation:
+      required: ["title"]
+    
+  - name: "default_script"
+    patterns:
+      - "脚本:{script}"
+    template: |
+      await (async () => { {script} })()
+    validation:
+      required: ["action"]
+
+  - name: "default_act"
+    patterns:
+      - "{action}"
+    template: "await $stagehand.act('{action}',{$page})"
+    validation:
+      required: ["action"]

@@ -1,0 +1,52 @@
+execution:
+  defaultTimeout: 30000
+  stepDelay: 1000
+  headless: false
+  viewport:
+    width: 1280
+    height: 720
+
+monitoring:
+  watchPatterns:
+    - "tests/scenarios/**/*.txt"
+  ignorePatterns:
+    - "**/archive/**"
+  debounceDelay: 500
+
+translation:
+  rulesFile: ./config/translation-rules.yaml
+  strictMode: true
+  validation: true
+
+  test_template: |
+    import { TextTestRunner} from "text-tester-by-stagehand";
+    import runnerContext from "../debug/runner-context.js";
+    const runner = new TextTestRunner();
+    describe("${suite:name}", () => {
+      beforeAll(async () => { console.log("\n🚀 初始化测试套件: ${suite:name}"); });
+      afterEach(async () => {});
+      afterAll(async () => { await runner.stagehandManager.closeAll?.(); });
+      ${test_template_each}
+    });
+  test_template_each: |
+      test("TC${index}: ${testcase:name}", async () => {
+          const result = await runner.runTestCase(runnerContext,${testcase:jsonstring});
+          if (!result.passed) {
+            const failed = result.steps.find((s) => !s.success);
+            throw new Error(`测试失败: ${failed?.error || "未知错误"}\n失败步骤: ${failed?.action}`);
+          }
+        }, 120000);
+
+  paramPatterns:
+    url: >-
+      https?:\/\/[^\s'")<>]+
+    email: >-
+      [A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}
+    ip: >-
+      (?:(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)
+    imagefilename: >-
+      [a-zA-Z0-9_\-]+\.(png|jpg|jpeg|gif|webp)
+    schema: >-
+      z\.object\(\{[\n\s\S]*\}\)
+    script: >-
+      [\n\s\S]*

@@ -1,0 +1,64 @@
+{
+  "name": "text-tester-by-stagehand",
+  "version": "0.1.0",
+  "description": "Zero-code text-driven UI test runner powered by Stagehand, with CLI init and Vitest integration.",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./vitest/core/test-runner.js": "./src/vitest/core/test-runner.js",
+    "./setup/env-setup.js": "./src/setup/env-setup.js"
+  },
+  "bin": {
+    "text-tester-by-stagehand": "./bin/text-tester-by-stagehand.cjs"
+  },
+  "files": [
+    "src",
+    "bin",
+    "templates",
+    "README.md"
+  ],
+  "scripts": {
+    "init": "node ./bin/text-tester-by-stagehand.cjs init",
+    "test": "vitest run",
+    "test:ui": "vitest --ui",
+    "build": "echo 'No build step'",
+    "prepublishOnly": "vitest run",
+    "release:patch": "npm version patch && npm publish",
+    "release:minor": "npm version minor && npm publish",
+    "release:major": "npm version major && npm publish"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/your-org/text-tester-by-stagehand.git"
+  },
+  "keywords": [
+    "stagehand",
+    "vitest",
+    "testing",
+    "zero-code",
+    "cli"
+  ],
+  "author": "",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@browserbasehq/stagehand": "^3.0.1",
+    "chokidar": "^4.0.3",
+    "dotenv": "^16.4.5",
+    "js-yaml": "^4.1.0",
+    "openai": "^6.8.1",
+    "openai-zod-to-json-schema": "^1.1.2",
+    "zod": "3.25.67",
+    "chai": "^6.2.1"
+  },
+  "devDependencies": {
+    "@vitest/ui": "2.1.9",
+    "vitest": "^2.1.3"
+  }
+}
