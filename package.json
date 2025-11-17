@@ -30,7 +30,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/your-org/text-tester-by-stagehand.git"
+    "url": "git+https://github.com/evlon/text-tester-by-stagehand.git"
   },
   "keywords": [
     "stagehand",
