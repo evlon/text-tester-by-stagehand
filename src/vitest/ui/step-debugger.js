@@ -28,6 +28,7 @@ function prompt(question) {
 
 
 export async function debugFile(scenarioFileArg) {
+  runnerContext = await import(join(process.cwd(), 'tests/debug/runner-context.js')).then(m => m.default || m);
   // 解析与创建文件: 支持传入文件名（相对）或绝对路径
   let scenarioFile = scenarioFileArg.match(/\//) ? scenarioFileArg : join(process.cwd(), "tests", "scenarios", scenarioFileArg);
   scenarioFile = scenarioFile.replace(/\.txt$/, "") + ".txt";
@@ -230,22 +231,22 @@ export async function debugFile(scenarioFileArg) {
 }
 
 // CLI
-if (process.argv[1] && process.argv[1].endsWith("step-debugger.js")) {
-  const rel = process.argv[2];
-  if (!rel) {
-    console.log("用法: pnpm test:debug <scenario.txt>");
-    process.exit(1);
-  }
+// if (process.argv[1] && process.argv[1].endsWith("step-debugger.js")) {
+//   const rel = process.argv[2];
+//   if (!rel) {
+//     console.log("用法: pnpm test:debug <scenario.txt>");
+//     process.exit(1);
+//   }
 
-  (async () => {
-    runnerContext = await import(join(process.cwd(), 'tests/debug/runner-context.js')).then(m => m.default || m);
-    const scenarioFile = rel.match(/\//) ? rel : join(process.cwd(), "tests", "scenarios", rel);
-    debugFile(scenarioFile).catch((e) => {
-      console.error("调试器异常:", e);
-      process.exit(1);
-    });
-  })();
-}
+//   (async () => {
+//     runnerContext = await import(join(process.cwd(), 'tests/debug/runner-context.js')).then(m => m.default || m);
+//     const scenarioFile = rel.match(/\//) ? rel : join(process.cwd(), "tests", "scenarios", rel);
+//     debugFile(scenarioFile).catch((e) => {
+//       console.error("调试器异常:", e);
+//       process.exit(1);
+//     });
+//   })();
+// }
 
 // 简易工作台服务（HTTP + SSE）
 function startWorkbenchServer(state, runner) {
