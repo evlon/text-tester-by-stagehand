@@ -111,10 +111,13 @@ class JiuTianAIClient extends LLMClient {
         throw error;
       }
     }
-
+    const modelNameToUse = this.modelName.startsWith("jiutian/")
+      ? this.modelName.split("/")[1]
+      : this.modelName;
+      
     const { response_model, ...jiutianOptions } = {
       ...optionsWithoutImageAndRequestId,
-      model: this.modelName,
+      model: modelNameToUse,
     };
 
     logger({
@@ -185,9 +188,7 @@ class JiuTianAIClient extends LLMClient {
       return formattedMessage;
     });
 
-    const modelNameToUse = this.modelName.startsWith("jiutian/")
-      ? this.modelName.split("/")[1]
-      : this.modelName;
+
 
     const body = {
       ...jiutianOptions,
