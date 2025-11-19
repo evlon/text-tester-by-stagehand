@@ -5,10 +5,102 @@ import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import yaml from "js-yaml";
 
-/**
- * Translator: map natural language steps to executable actions using
- * config/translation-rules.yaml. 若无规则匹配则切换到 agent 模式。
- */
+// ============================================================================
+// 使用示例 - 使用 ~ 分隔符
+// ============================================================================
+
+/*
+配置文件 (translation-rules.yaml):
+
+rules:
+  - name: "goto_url"
+    patterns:
+      - "打开~{url}"
+      - "访问~{url}"
+      - "打开~{label}~{url}"
+    template: |
+      await $context.newPage('{url}');
+    validation:
+      required: ["url"]
+
+  - name: "screenshot"
+    patterns:
+      - "截图~保存为~{imagefilename}"
+      - "截屏~{imagefilename}"
+    template: |
+      await $page.screenshot({ path: 'results/screenshots/{imagefilename}.png' });
+    validation:
+      required: ["imagefilename"]
+      
+  - name: "input_action"
+    patterns:
+      - "在{field}中输入~{value}"
+      - "输入~{value}~到{field}"
+      - "填充~{selector}~{value}"
+    template: |
+      await $stagehand.act('在 {field} 中输入 {value}', $page)
+    validation:
+      required: ["field", "value"]
+
+  - name: "assert_text"
+    patterns:
+      - "断言包含文本~{selector}~{text}"
+      - "断言文本等于~{selector}~{text}"
+    template: |
+      await (async () => {
+        const actualText = await $page.locator('{selector}').textContent();
+        expect(actualText).to.include('{text}');
+      })()
+    validation:
+      required: ["selector", "text"]
+
+测试用例示例:
+
+1. 打开~https://example.com
+2. 在用户名中输入~admin
+3. 填充~#password~secret123
+4. 点击~登录按钮
+5. 等待~2000~毫秒
+6. 断言包含文本~.message~登录成功
+7. 截图~保存为~dashboard
+8. 摘录~提取用户信息
+
+解析结果:
+
+步骤1: 
+  匹配规则: goto_url
+  参数: {url: "https://example.com"}
+  生成代码: await $context.newPage('https://example.com');
+  
+步骤2:
+  匹配规则: input_action  
+  参数: {field: "用户名", value: "admin"}
+  生成代码: await $stagehand.act('在 用户名 中输入 admin', $page)
+  
+步骤3:
+  匹配规则: input_action
+  参数: {selector: "#password", value: "secret123"}
+  生成代码: await $stagehand.act('在 #password 中输入 secret123', $page)
+  
+步骤4:
+  匹配规则: default_act (AI fallback)
+  AI模式执行: "点击~登录按钮" -> "点击登录按钮"
+  
+步骤6:
+  匹配规则: assert_text
+  参数: {selector: ".message", text: "登录成功"}
+  
+步骤7:
+  匹配规则: screenshot
+  参数: {imagefilename: "dashboard"}
+
+优势总结:
+✅ 简洁：单字符 ~
+✅ 清晰：视觉上明显与文字区分
+✅ 无歧义：无中英文混淆
+✅ 易输入：标准键盘都有
+✅ 兼容性：不与正则冲突
+*/
 export class Translator {
   constructor(options = {}) {
     this.rulesPath = options.rulesPath || join(process.cwd(), "config", "translation-rules.yaml");
@@ -29,7 +121,7 @@ export class Translator {
       const rules = Array.isArray(cfg?.rules) ? cfg.rules : [];
       return rules.map((r) => ({
         name: r.name,
-        patterns: Array.isArray(r.patterns) ? r.patterns : [],
+        patterns: (Array.isArray(r.patterns) ? r.patterns : []).map((pat) => ({pat, re: this._compilePatternToRegex(pat)})),
         template: r.template,
         validation: r.validation || {},
       }));
@@ -65,8 +157,7 @@ export class Translator {
   matchRule(text) {
     const normalized = text.trim();
     for (const rule of this.rules) {
-      for (const pat of rule.patterns) {
-        const re = this._compilePatternToRegex(pat);
+      for (const {pat, re} of rule.patterns) {
         const m = normalized.match(re);
         if (m) {
           const rawGroups = m.groups || {};
@@ -81,39 +172,56 @@ export class Translator {
   }
 
   // Safely compile pattern with placeholders to a regex that captures named groups
-  _compilePatternToRegex(pattern) {
-    // 支持管道分隔语法：token1|token2|token3
-    // 对管道分隔的规则，默认允许管道两侧存在可选空格（无需在 patterns 中专门配置空格变体）
-    if (pattern.includes("|")) {
-      const segments = pattern.split("|").map((s) => s.trim());
-      const compiledSegments = segments.map((seg) => this._compileSegment(seg));
-      const body = compiledSegments.join("\\.*?");
-      return new RegExp(`^${body}$`);
-    }
-    // 非管道规则，按原逻辑处理（精确匹配字面与占位符）
-    return new RegExp(`^${this._compileSegment(pattern)}$`);
+_compilePatternToRegex(pattern) {
+  // 使用 ~ 作为分隔符
+  // 支持波浪号分隔语法：token1~token2~token3
+  const DELIMITER = "~";
+  
+  if (pattern.includes(DELIMITER)) {
+    // 按 ~ 分割
+    const segments = pattern.split(DELIMITER);
+    const compiledSegments = segments.map((seg) => this._compileSegment(seg.trim()));
+    
+    // 段之间允许可选空白
+    const body = compiledSegments.join("\\s*");
+    return new RegExp(`^${body}$`);
   }
+  
+  // 非分隔符规则，支持自然语言占位符
+  return new RegExp(`^${this._compileSegment(pattern)}$`);
+}
 
-  _compileSegment(segment) {
-    const parts = [];
-    let lastIndex = 0;
-    const placeholderRe = /\{(\w+)\}/g;
-    let match;
-    while ((match = placeholderRe.exec(segment)) !== null) {
-      const [full, name] = match;
-      const literal = segment.slice(lastIndex, match.index);
-      parts.push(this._escapeRegex(literal));
-      const custom = this.paramPatterns?.[name];
-      if (custom && typeof custom === "string" && custom.length > 0) {
-        parts.push(`(?<${name}>${custom})`);
-      } else {
-        parts.push(`(?<${name}>.+?)`);
-      }
-      lastIndex = match.index + full.length;
+
+_compileSegment(segment) {
+  const parts = [];
+  let lastIndex = 0;
+  const placeholderRe = /\{(\w+)\}/g;
+  let match;
+  
+  while ((match = placeholderRe.exec(segment)) !== null) {
+    const [full, name] = match;
+    
+    // 添加占位符前的字面文本
+    const literal = segment.slice(lastIndex, match.index);
+    parts.push(this._escapeRegex(literal));
+    
+    // 查找自定义参数正则（如 url, email 等）
+    const custom = this.paramPatterns?.[name];
+    if (custom && typeof custom === "string" && custom.length > 0) {
+      // 使用预定义的正则模式
+      parts.push(`(?<${name}>${custom})`);
+    } else {
+      // 默认非贪婪匹配
+      parts.push(`(?<${name}>.+?)`);
     }
-    parts.push(this._escapeRegex(segment.slice(lastIndex)));
-    return parts.join("");
+    
+    lastIndex = match.index + full.length;
   }
+  
+  // 添加剩余的字面文本
+  parts.push(this._escapeRegex(segment.slice(lastIndex)));
+  return parts.join("");
+}
 
   _escapeRegex(s) {
     return s.replace(/[.*+?^$()|[\]\\]/g, "\\$&");
@@ -126,33 +234,51 @@ export class Translator {
     });
   }
 
-  translate(stepText) {
-    const stepTextEnv = this._expandEnv(stepText);
-    const match = this.matchRule(stepTextEnv);
-    if (match) {
-      const { rule, groups, pattern } = match;
-      const code = this.renderTemplate(rule.template, groups);
-      return {
-        engine: "rules",
-        action: stepTextEnv,
-        actionRaw: stepText,
-        matchedRule: rule.name,
-        matchedPattern: pattern,
-        params: groups,
-        template: rule.template,
-        code,
-        type: this.inferTypeFromTemplate(rule.template),
-      };
+translate(stepText) {
+  const stepTextEnv = this._expandEnv(stepText);
+  const match = this.matchRule(stepTextEnv);
+  
+  if (match) {
+    const { rule, groups, pattern } = match;
+    
+    // 验证必需参数
+    const required = rule.validation?.required || [];
+    const validation = this._validateParams(groups, required);
+    
+    if (!validation.valid) {
+      console.warn(`⚠️ 规则 [${rule.name}] 缺少必需参数: ${validation.missing.join(', ')}`);
+      if (this.strictMode) {
+        throw new Error(`参数验证失败: 缺少 ${validation.missing.join(', ')}`);
+      }
     }
-    // Fallback: agent mode executes natural language with Stagehand agent
+    
+    const code = this.renderTemplate(rule.template, groups);
+    
     return {
-      engine: "agent",
-      matchedRule: null,
-      params: {},
-      code: stepText,
-      type: "agent",
+      engine: "rules",
+      action: stepTextEnv,
+      actionRaw: stepText,
+      matchedRule: rule.name,
+      matchedPattern: pattern,
+      params: groups,
+      template: rule.template,
+      code,
+      type: this.inferTypeFromTemplate(rule.template),
+      validation: validation.valid
     };
   }
+  
+  // Fallback: agent mode
+  return {
+    engine: "agent",
+    action: stepTextEnv,
+    actionRaw: stepText,
+    matchedRule: null,
+    params: {},
+    code: stepTextEnv,
+    type: "agent"
+  };
+}
 
   renderTemplate(template, params) {
     if (!template) return "";
@@ -172,6 +298,14 @@ export class Translator {
     this.rules = this.loadRules();
     return { rules: this.rules?.length || 0 };
   }
+  _validateParams(params, required = []) {
+  const missing = required.filter(key => !params[key] || params[key].trim() === '');
+  if (missing.length > 0) {
+    return { valid: false, missing };
+  }
+  return { valid: true, missing: [] };
+}
+
 }
 
 // CLI usage (optional)

@@ -27,16 +27,6 @@ export class StepExecutor {
     // const expandedAction = this.expandEnv(action);
     let translation = this.translator.translate(action);
     const expandedAction = translation.action;
-    // 针对 URL 导航类规则，先对 URL 参数进行清洗并重新渲染代码
-    // if (translation.engine === "rules" && (translation.matchedRule || "").startsWith("goto_url")) {
-    //   const cleanedUrl = this._sanitizeUrlParam(translation.params?.url);
-    //   if (cleanedUrl) {
-    //     translation.params.url = cleanedUrl;
-    //     if (translation.template) {
-    //       translation.code = this.translator.renderTemplate(translation.template, translation.params);
-    //     }
-    //   }
-    // }
 
     // 若非 rules 引擎，切换到“默认规则”以保证统一基于 rules 执行
     if (translation.engine !== "rules") {

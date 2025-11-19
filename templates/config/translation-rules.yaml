@@ -1,234 +1,1071 @@
 version: "1.0"
-# 说明, template 中,可以是用的变量如下:
-# {$page} 当前页面
-# $stagehand 当前stagehand对象,包含了一些方法, 如: $stagehand.agent, $stagehand.act, $stagehand.extract, 详见https://docs.stagehand.dev/v3/references/stagehand
-# $context 当前context对象,包含了一些方法, 如: newPage, context, getPages, activePage, setActivePage, close, 详见:https://docs.stagehand.dev/v3/references/context
-rules: 
+
+# ============================================================================
+# 自动化测试规则配置文件 (使用 ~ 作为分隔符)
+# ============================================================================
+# 
+# 说明：本配置文件定义了自动化测试中可使用的各种操作规则
+# 
+# 可用变量：
+# - $page          : 当前活动页面对象 (Playwright Page)
+# - $stagehand     : Stagehand 实例，提供 AI 增强的操作方法
+# - $context       : 上下文管理对象，用于多标签页管理
+# - $title         : 当前页面标题
+# - $url           : 当前页面 URL
+# - fs, path, z, expect : 辅助工具库
+#
+# 规则格式说明：
+# - 使用 ~ 波浪号作为分隔符（无中英文混淆）
+# - patterns 中 {变量名} 表示参数占位符
+# - template 为执行模板，可使用上述变量和参数
+# ============================================================================
+
+rules:
+  # ==========================================================================
+  # 页面导航类操作
+  # ==========================================================================
+  
   - name: "goto_url"
+    description: "打开指定 URL 的新标签页"
     patterns:
-      - "打开|{url}"
-      - "访问|{url}"
-      - "导航到|{url}"
-      - "打开|{lebel}|{url}"
-      - "访问|{lebel}|{url}"
-      - "导航到|{lebel}|{url}"
+      - "打开~{url}"
+      - "访问~{url}"
+      - "导航到~{url}"
+      - "打开~{label}~{url}"
+      - "访问~{label}~{url}"
     template: |
-      await $context.newPage('{url}');    
+      await $context.newPage('{url}');
+    validation:
+      required: ["url"]
+    examples:
+      - "打开~https://www.example.com"
+      - "访问~登录页~https://app.example.com/login"
+
+  - name: "goto_current_page"
+    description: "在当前页面导航到新 URL"
+    patterns:
+      - "当前页面打开~{url}"
+      - "当前页面访问~{url}"
+      - "跳转到~{url}"
+    template: |
+      await $page.goto('{url}');
     validation:
       required: ["url"]
 
-  - name: "input_action"
+  - name: "go_back"
+    description: "返回上一页"
     patterns:
-      - "在{field}中输入{value}"
-    template: "await $stagehand.act('在 {field} 中输入 {value}',{$page})"
+      - "返回"
+      - "后退"
+    template: |
+      await $page.goBack();
+    validation:
+      required: []
+
+  - name: "go_forward"
+    description: "前进到下一页"
+    patterns:
+      - "前进"
+    template: |
+      await $page.goForward();
+    validation:
+      required: []
+
+  - name: "reload_page"
+    description: "刷新当前页面"
+    patterns:
+      - "刷新"
+      - "重新加载"
+    template: |
+      await $page.reload();
+    validation:
+      required: []
+
+  # ==========================================================================
+  # 表单输入类操作
+  # ==========================================================================
+
+  - name: "input_action"
+    description: "在指定字段中输入内容 (AI 增强)"
+    patterns:
+      - "在{field}中输入~{value}"
+      - "输入~{value}~到{field}"
+    template: |
+      await $stagehand.act('在 {field} 中输入 {value}', $page)
     validation:
       required: ["field", "value"]
+    examples:
+      - "在用户名中输入~admin"
+      - "输入~test@example.com~到邮箱字段"
 
+  - name: "fill_input"
+    description: "使用选择器填充输入框"
+    patterns:
+      - "填充~{selector}~{value}"
+      - "设置~{selector}~为~{value}"
+    template: |
+      await $page.locator('{selector}').fill('{value}');
+    validation:
+      required: ["selector", "value"]
+    examples:
+      - "填充~#username~admin"
+      - "设置~input[name='email']~为~test@example.com"
+
+  - name: "type_text"
+    description: "模拟键盘逐字输入"
+    patterns:
+      - "键入~{selector}~{value}"
+      - "逐字输入~{selector}~{value}"
+    template: |
+      await $page.locator('{selector}').type('{value}', { delay: 100 });
+    validation:
+      required: ["selector", "value"]
+
+  - name: "clear_input"
+    description: "清空输入框内容"
+    patterns:
+      - "清空~{selector}"
+      - "清除~{selector}"
+    template: |
+      await $page.locator('{selector}').clear();
+    validation:
+      required: ["selector"]
+
+  # ==========================================================================
+  # 点击类操作
+  # ==========================================================================
+
+  - name: "click_action"
+    description: "AI 驱动的智能点击"
+    patterns:
+      - "点击~{target}"
+      - "单击~{target}"
+    template: |
+      await $stagehand.act('点击 {target}', $page)
+    validation:
+      required: ["target"]
+    examples:
+      - "点击~登录按钮"
+      - "单击~提交"
+
+  - name: "locator_click"
+    description: "使用选择器精确点击"
+    patterns:
+      - "技术点击~{selector}"
+      - "定位点击~{selector}"
+    template: |
+      await $page.locator('{selector}').click();
+    validation:
+      required: ["selector"]
+    examples:
+      - "技术点击~button[type='submit']"
+      - "定位点击~#login-btn"
+
+  - name: "double_click"
+    description: "双击元素"
+    patterns:
+      - "双击~{selector}"
+    template: |
+      await $page.locator('{selector}').dblclick();
+    validation:
+      required: ["selector"]
+
+  - name: "right_click"
+    description: "右键点击元素"
+    patterns:
+      - "右键~{selector}"
+      - "右键点击~{selector}"
+    template: |
+      await $page.locator('{selector}').click({ button: 'right' });
+    validation:
+      required: ["selector"]
+
+  - name: "hover"
+    description: "鼠标悬停"
+    patterns:
+      - "悬停~{selector}"
+      - "鼠标移到~{selector}"
+    template: |
+      await $page.locator('{selector}').hover();
+    validation:
+      required: ["selector"]
+
+  # ==========================================================================
+  # 选择类操作
+  # ==========================================================================
+
+  - name: "select_option"
+    description: "下拉框选择"
+    patterns:
+      - "选择~{selector}~{value}"
+      - "下拉选择~{selector}~{value}"
+    template: |
+      await $page.locator('{selector}').selectOption('{value}');
+    validation:
+      required: ["selector", "value"]
+    examples:
+      - "选择~#country~China"
+
+  - name: "check_checkbox"
+    description: "勾选复选框"
+    patterns:
+      - "勾选~{selector}"
+      - "选中~{selector}"
+    template: |
+      await $page.locator('{selector}').check();
+    validation:
+      required: ["selector"]
+
+  - name: "uncheck_checkbox"
+    description: "取消勾选复选框"
+    patterns:
+      - "取消勾选~{selector}"
+      - "取消选中~{selector}"
+    template: |
+      await $page.locator('{selector}').uncheck();
+    validation:
+      required: ["selector"]
+
+  # ==========================================================================
+  # 等待类操作
+  # ==========================================================================
 
   - name: "wait_ms"
+    description: "等待指定毫秒数"
     patterns:
-      - "等待{ms}毫秒"
-      - "等待{ms}ms"
-    template: "await new Promise(r => setTimeout(r, {ms}))"
+      - "等待~{ms}~毫秒"
+      - "等待~{ms}~ms"
+      - "暂停~{ms}~毫秒"
+    template: |
+      await new Promise(r => setTimeout(r, {ms}));
     validation:
       required: ["ms"]
+    examples:
+      - "等待~2000~毫秒"
+
+  - name: "wait_for_selector"
+    description: "等待元素出现"
+    patterns:
+      - "等待元素~{selector}"
+      - "等待出现~{selector}"
+    template: |
+      await $page.waitForSelector('{selector}', { timeout: 30000 });
+    validation:
+      required: ["selector"]
+
+  - name: "wait_for_text"
+    description: "等待文本出现"
+    patterns:
+      - "等待文本~{text}"
+      - "等待包含~{text}"
+    template: |
+      await $page.waitForSelector(\`text={text}\`, { timeout: 30000 });
+    validation:
+      required: ["text"]
+
+  - name: "wait_for_navigation"
+    description: "等待页面导航完成"
+    patterns:
+      - "等待导航"
+      - "等待页面加载"
+    template: |
+      await $page.waitForLoadState('networkidle');
+    validation:
+      required: []
+
+  - name: "wait_for_url"
+    description: "等待 URL 包含指定内容"
+    patterns:
+      - "等待URL~{urlPart}"
+      - "等待地址包含~{urlPart}"
+    template: |
+      await $page.waitForURL('**/{urlPart}**', { timeout: 30000 });
+    validation:
+      required: ["urlPart"]
+
+  # ==========================================================================
+  # 截图与视觉验证
+  # ==========================================================================
 
   - name: "screenshot"
+    description: "截取整页截图并保存"
     patterns:
-      - "截图|保存为|{imagefilename}"
-      - "截屏|保存为|{imagefilename}"
-      - "保存截图|{imagefilename}"
+      - "截图~保存为~{imagefilename}"
+      - "截屏~保存为~{imagefilename}"
+      - "保存截图~{imagefilename}"
     template: |
       await (async () => {
-        // 3. 调用 screenshot() 方法
-        // 它返回一个 Promise<Buffer>
-        // { fullPage: true } 可选，用于捕获整个可滚动页面，默认为 false (只截取视口)
-        await $page.screenshot({ path: `results/{imagefilename}.png`, fullPage: true });
-        const screenshotBuffer = await $page.screenshot({ 
-              fullPage: true 
-        });
-        // 4. 定义保存路径和文件名
+        const screenshotBuffer = await $page.screenshot({ fullPage: true });
         fs.mkdirSync('results/screenshots', { recursive: true });
-        const filePath = path.join(process.cwd(), "results/screenshots/{imagefilename}");        
-        // 5. 使用 fs.writeFileSync (同步) 或 fs.writeFile (异步) 将 Buffer 写入文件
+        const filePath = path.join(process.cwd(), 'results/screenshots', '{imagefilename}.png');
         fs.writeFileSync(filePath, screenshotBuffer);
+        console.log(\`   📸 截图已保存: \${filePath}\`);
         return filePath;
       })()
     validation:
       required: ["imagefilename"]
-  - name: "locator_click"
+    examples:
+      - "截图~保存为~login-page"
+
+  - name: "screenshot_element"
+    description: "截取指定元素的截图"
     patterns:
-      - "技术点击|{selector}"
+      - "截取元素~{selector}~保存为~{imagefilename}"
     template: |
-      await $page.locator("{selector}").click()
+      await (async () => {
+        const element = $page.locator('{selector}');
+        const screenshotBuffer = await element.screenshot();
+        fs.mkdirSync('results/screenshots', { recursive: true });
+        const filePath = path.join(process.cwd(), 'results/screenshots', '{imagefilename}.png');
+        fs.writeFileSync(filePath, screenshotBuffer);
+        console.log(\`   📸 元素截图已保存: \${filePath}\`);
+        return filePath;
+      })()
+    validation:
+      required: ["selector", "imagefilename"]
+
+  # ==========================================================================
+  # 数据提取类操作
+  # ==========================================================================
+
+  - name: "default_extract"
+    description: "AI 提取页面数据 (无结构)"
+    patterns:
+      - "摘录~{action}"
+      - "提取~{action}"
+    template: |
+      await $stagehand.extract('{action}')
+    validation:
+      required: ["action"]
+    examples:
+      - "摘录~页面上所有产品的名称和价格"
+      - "提取~用户的个人信息"
+
+  - name: "default_extract_with_schema"
+    description: "AI 提取页面数据 (带 Zod Schema)"
+    patterns:
+      - "摘录~{action}~{schema}"
+      - "提取~{action}~{schema}"
+    template: |
+      await $stagehand.extract('{action}', {schema})
+    validation:
+      required: ["action", "schema"]
+    examples:
+      - "摘录~提取用户信息~z.object({name: z.string(), email: z.string()})"
+
+  - name: "get_text"
+    description: "获取元素文本内容"
+    patterns:
+      - "获取文本~{selector}"
+      - "读取文本~{selector}"
+    template: |
+      await $page.locator('{selector}').textContent()
     validation:
       required: ["selector"]
 
-  - name: "default_extract"
+  - name: "get_attribute"
+    description: "获取元素属性值"
     patterns:
-      - "摘录:|{action}"
-      - "摘录：|{action}"
-    template: "await $stagehand.extract('{action}')"
+      - "获取属性~{selector}~{attribute}"
+      - "读取属性~{selector}~{attribute}"
+    template: |
+      await $page.locator('{selector}').getAttribute('{attribute}')
     validation:
-      required: ["action"]
+      required: ["selector", "attribute"]
+    examples:
+      - "获取属性~#link~href"
 
-  - name: "default_extract_with_schema"
+  - name: "get_value"
+    description: "获取输入框的值"
     patterns:
-      - "摘录:|{action}|{schema}"
-      - "摘录：|{action}|{schema}"
-    template: "await $stagehand.extract('{action}',{schema})"
+      - "获取值~{selector}"
+      - "读取值~{selector}"
+    template: |
+      await $page.locator('{selector}').inputValue()
     validation:
-      required: ["action","schema"]
+      required: ["selector"]
+
+  - name: "get_count"
+    description: "获取匹配元素的数量"
+    patterns:
+      - "统计~{selector}"
+      - "计数~{selector}"
+    template: |
+      await $page.locator('{selector}').count()
+    validation:
+      required: ["selector"]
+
+  # ==========================================================================
+  # 观察与断言类操作
+  # ==========================================================================
 
   - name: "default_observe"
+    description: "AI 观察页面元素及可用操作"
     patterns:
-      - "观察:|{action}"
-      - "观察：|{action}"
-    template: "await $stagehand.observe('{action}')"
+      - "观察~{action}"
+    template: |
+      await $stagehand.observe('{action}')
     validation:
       required: ["action"]
+    examples:
+      - "观察~页面上的所有按钮"
 
   - name: "default_observe_expect"
+    description: "观察并断言有可用操作"
     patterns:
-      - "断言:|{action}"
-      - "断言：|{action}" 
+      - "断言~{action}"
     template: |
       await (async () => {
-        /* actions example
-        [
-          {
-            "selector": "/html/body/div[1]/header/nav/button[1]",
-            "description": "Login button in the navigation bar",
-            "method": "click",
-            "arguments": []
-          },
-          {
-            "selector": "/html/body/main/form/input[1]",
-            "description": "Email input field in the login form",
-            "method": "fill",
-            "arguments": []
-          }
-        ]
-        */
-        const actions = await $stagehand.observe('{action}')
-        expect(actions.length > 0, "actions is empty").to.be.true;
+        const actions = await $stagehand.observe('{action}');
+        expect(actions.length, '未找到任何可用操作').to.be.greaterThan(0);
         return actions;
       })()
     validation:
       required: ["action"]
+    examples:
+      - "断言~页面有登录按钮"
 
-  - name: "default_agent"
+  - name: "assert_visible"
+    description: "断言元素可见"
     patterns:
-      - "代理:|{action}"
-      - "代理：|{action}"
-    template: "await $stagehand.agent('{action}')"
+      - "断言可见~{selector}"
+      - "应该可见~{selector}"
+    template: |
+      await (async () => {
+        const isVisible = await $page.locator('{selector}').isVisible();
+        expect(isVisible, '元素 {selector} 应该可见').to.be.true;
+        return isVisible;
+      })()
     validation:
-      required: ["action"]
+      required: ["selector"]
+
+  - name: "assert_hidden"
+    description: "断言元素不可见"
+    patterns:
+      - "断言隐藏~{selector}"
+      - "应该隐藏~{selector}"
+    template: |
+      await (async () => {
+        const isHidden = await $page.locator('{selector}').isHidden();
+        expect(isHidden, '元素 {selector} 应该隐藏').to.be.true;
+        return isHidden;
+      })()
+    validation:
+      required: ["selector"]
+
+  - name: "assert_text_contains"
+    description: "断言元素包含指定文本"
+    patterns:
+      - "断言包含文本~{selector}~{text}"
+      - "应该包含~{selector}~{text}"
+    template: |
+      await (async () => {
+        const actualText = await $page.locator('{selector}').textContent();
+        expect(actualText, \`元素 {selector} 应包含文本 "{text}"\`).to.include('{text}');
+        return actualText;
+      })()
+    validation:
+      required: ["selector", "text"]
+
+  - name: "assert_text_equals"
+    description: "断言元素文本完全匹配"
+    patterns:
+      - "断言文本等于~{selector}~{text}"
+      - "文本应该是~{selector}~{text}"
+    template: |
+      await (async () => {
+        const actualText = (await $page.locator('{selector}').textContent()).trim();
+        expect(actualText, \`元素 {selector} 的文本应该是 "{text}"\`).to.equal('{text}');
+        return actualText;
+      })()
+    validation:
+      required: ["selector", "text"]
+
+  - name: "assert_count"
+    description: "断言元素数量"
+    patterns:
+      - "断言数量~{selector}~{count}"
+      - "应该有~{count}~个~{selector}"
+    template: |
+      await (async () => {
+        const actualCount = await $page.locator('{selector}').count();
+        expect(actualCount, \`应该有 {count} 个元素匹配 {selector}\`).to.equal(parseInt('{count}'));
+        return actualCount;
+      })()
+    validation:
+      required: ["selector", "count"]
+
+  - name: "assert_url_contains"
+    description: "断言 URL 包含指定内容"
+    patterns:
+      - "断言URL包含~{urlPart}"
+      - "地址应该包含~{urlPart}"
+    template: |
+      await (async () => {
+        const currentUrl = $page.url();
+        expect(currentUrl, \`URL 应该包含 "{urlPart}"\`).to.include('{urlPart}');
+        return currentUrl;
+      })()
+    validation:
+      required: ["urlPart"]
+
+  - name: "assert_title"
+    description: "断言页面标题"
+    patterns:
+      - "断言标题~{title}"
+      - "标题应该是~{title}"
+    template: |
+      await (async () => {
+        const actualTitle = await $page.title();
+        expect(actualTitle, \`页面标题应该是 "{title}"\`).to.equal('{title}');
+        return actualTitle;
+      })()
+    validation:
+      required: ["title"]
+
+  - name: "assert_attribute"
+    description: "断言元素属性值"
+    patterns:
+      - "断言属性~{selector}~{attribute}~{value}"
+      - "属性应该是~{selector}~{attribute}~{value}"
+    template: |
+      await (async () => {
+        const actualValue = await $page.locator('{selector}').getAttribute('{attribute}');
+        expect(actualValue, \`元素 {selector} 的 {attribute} 属性应该是 "{value}"\`).to.equal('{value}');
+        return actualValue;
+      })()
+    validation:
+      required: ["selector", "attribute", "value"]
+
+  - name: "assert_checked"
+    description: "断言复选框已选中"
+    patterns:
+      - "断言已选中~{selector}"
+      - "应该被勾选~{selector}"
+    template: |
+      await (async () => {
+        const isChecked = await $page.locator('{selector}').isChecked();
+        expect(isChecked, \`元素 {selector} 应该被选中\`).to.be.true;
+        return isChecked;
+      })()
+    validation:
+      required: ["selector"]
+
+  - name: "assert_enabled"
+    description: "断言元素可用"
+    patterns:
+      - "断言可用~{selector}"
+      - "应该可用~{selector}"
+    template: |
+      await (async () => {
+        const isEnabled = await $page.locator('{selector}').isEnabled();
+        expect(isEnabled, \`元素 {selector} 应该可用\`).to.be.true;
+        return isEnabled;
+      })()
+    validation:
+      required: ["selector"]
+
+  - name: "assert_disabled"
+    description: "断言元素禁用"
+    patterns:
+      - "断言禁用~{selector}"
+      - "应该禁用~{selector}"
+    template: |
+      await (async () => {
+        const isDisabled = await $page.locator('{selector}').isDisabled();
+        expect(isDisabled, \`元素 {selector} 应该被禁用\`).to.be.true;
+        return isDisabled;
+      })()
+    validation:
+      required: ["selector"]
+
+  # ==========================================================================
+  # 多标签页管理
+  # ==========================================================================
 
   - name: "context_newPage"
+    description: "创建新标签页"
     patterns:
-      - "标签:|新页面|{url}"
-      - "标签：|新页面|{url}"
-      - "上下文:|新页面|{url}"
-      - "上下文：|新页面|{url}"
-    template: "await $context.newPage('{url}')"
+      - "标签~新页面~{url}"
+      - "上下文~新页面~{url}"
+      - "新建标签页~{url}"
+    template: |
+      await $context.newPage('{url}')
     validation:
       required: ["url"]
+
   - name: "context_pages"
+    description: "列出所有标签页的标题"
     patterns:
-      - "标签:|全部页面"
-      - "标签：|全部页面"
-      - "上下文:|全部页面" 
-      - "上下文：|全部页面"       
+      - "标签~全部页面"
+      - "上下文~全部页面"
+      - "列出所有标签页"
     template: |
       await (async () => {
         const retArray = [];
         const pages = $context.pages();
-        for (const $page of pages) {
-          const pageTitle = await $page.title();
+        for (const page of pages) {
+          const pageTitle = await page.title();
           retArray.push(pageTitle);
         }
         return retArray;
-      })() 
+      })()
     validation:
       required: []
 
   - name: "context_Pages_by_title"
+    description: "根据标题筛选标签页"
     patterns:
-      - "标签:|全部页面|{title}"
-      - "标签：|全部页面|{title}"
-      - "上下文:|全部页面|{title}" 
-      - "上下文：|全部页面|{title}"       
+      - "标签~全部页面~{title}"
+      - "上下文~全部页面~{title}"
+      - "查找标签页~{title}"
     template: |
       await (async () => {
         const retArray = [];
         const pages = $context.pages();
-        for (const $page of pages) {
-          const pageTitle = await $page.title();
-          if (!title || pageTitle.includes(title)) {
+        for (const page of pages) {
+          const pageTitle = await page.title();
+          if (pageTitle.includes('{title}')) {
             retArray.push(pageTitle);
           }
         }
         return retArray;
-      })() 
+      })()
     validation:
       required: ["title"]
 
   - name: "context_close_pages_by_title"
+    description: "根据标题关闭标签页"
     patterns:
-      - "标签:|关闭页面|{title}"
-      - "标签：|关闭页面|{title}"
-      - "上下文:|关闭页面|{title}" 
-      - "上下文：|关闭页面|{title}"         
+      - "标签~关闭页面~{title}"
+      - "上下文~关闭页面~{title}"
+      - "关闭标签页~{title}"
     template: |
       await (async () => {
         const retArray = [];
         const pages = $context.pages();
-        for (const $page of pages) {
-          const pageTitle = await $page.title();
-          if (!title || pageTitle.includes(title)) {
-            await $page.close();
+        for (const page of pages) {
+          const pageTitle = await page.title();
+          if (pageTitle.includes('{title}')) {
+            await page.close();
             retArray.push(pageTitle);
           }
         }
         return retArray;
-      })() 
+      })()
     validation:
       required: ["title"]
+
   - name: "context_active_page_by_title"
+    description: "切换到指定标题的标签页"
     patterns:
-      - "标签:|切换页面|{title}"
-      - "标签：|切换页面|{title}"
-      - "上下文:|切换页面|{title}" 
-      - "上下文：|切换页面|{title}"
+      - "标签~切换页面~{title}"
+      - "上下文~切换页面~{title}"
+      - "切换到标签页~{title}"
     template: |
       await (async () => {
         const pages = $context.pages();
-        for (const $page of pages) {
-          const pageTitle = await $page.title();
-          if (!title || pageTitle.includes(title)) {
-            $context.setActivePage($page);
+        for (const page of pages) {
+          const pageTitle = await page.title();
+          if (pageTitle.includes('{title}')) {
+            $context.setActivePage(page);
             const title = await $context.activePage()?.title();
-            return {title, result:true}
+            return { title, result: true };
           }
         }
-        return  {title:null, result:false};
-      })() 
+        return { title: null, result: false };
+      })()
     validation:
       required: ["title"]
-    
-  - name: "default_script"
+
+  # ==========================================================================
+  # 键盘与鼠标操作
+  # ==========================================================================
+
+  - name: "press_key"
+    description: "按下键盘按键"
     patterns:
-      - "脚本:{script}"
-      - "脚本：{script}"
+      - "按键~{key}"
+      - "按下~{key}"
+    template: |
+      await $page.keyboard.press('{key}');
+    validation:
+      required: ["key"]
+    examples:
+      - "按键~Enter"
+      - "按下~Escape"
+
+  - name: "keyboard_type"
+    description: "键盘输入文本"
+    patterns:
+      - "键盘输入~{text}"
+    template: |
+      await $page.keyboard.type('{text}', { delay: 100 });
+    validation:
+      required: ["text"]
+
+  - name: "scroll_to"
+    description: "滚动到元素位置"
+    patterns:
+      - "滚动到~{selector}"
+    template: |
+      await $page.locator('{selector}').scrollIntoViewIfNeeded();
+    validation:
+      required: ["selector"]
+
+  - name: "scroll_page"
+    description: "滚动页面"
+    patterns:
+      - "滚动~{direction}"
+    template: |
+      await (async () => {
+        const direction = '{direction}'.toLowerCase();
+        if (direction === '底部' || direction === '下') {
+          await $page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+        } else if (direction === '顶部' || direction === '上') {
+          await $page.evaluate(() => window.scrollTo(0, 0));
+        }
+      })()
+    validation:
+      required: ["direction"]
+    examples:
+      - "滚动~底部"
+      - "滚动~顶部"
+
+  # ==========================================================================
+  # 文件操作
+  # ==========================================================================
+
+  - name: "upload_file"
+    description: "上传文件"
+    patterns:
+      - "上传文件~{selector}~{filepath}"
+    template: |
+      await $page.locator('{selector}').setInputFiles('{filepath}');
+    validation:
+      required: ["selector", "filepath"]
+
+  - name: "download_file"
+    description: "等待并保存下载的文件"
+    patterns:
+      - "下载文件~保存为~{filename}"
+    template: |
+      await (async () => {
+        const downloadPromise = $page.waitForEvent('download');
+        const download = await downloadPromise;
+        const filePath = path.join(process.cwd(), 'results/downloads', '{filename}');
+        fs.mkdirSync(path.dirname(filePath), { recursive: true });
+        await download.saveAs(filePath);
+        console.log(\`   💾 文件已下载: \${filePath}\`);
+        return filePath;
+      })()
+    validation:
+      required: ["filename"]
+
+  # ==========================================================================
+  # Cookie 和存储操作
+  # ==========================================================================
+
+  - name: "get_cookies"
+    description: "获取所有 Cookie"
+    patterns:
+      - "获取Cookie"
+      - "读取Cookie"
+    template: |
+      await $context.context.cookies()
+    validation:
+      required: []
+
+  - name: "add_cookie"
+    description: "添加 Cookie"
+    patterns:
+      - "添加Cookie~{name}~{value}"
+    template: |
+      await $context.context.addCookies([{ name: '{name}', value: '{value}', url: $page.url() }])
+    validation:
+      required: ["name", "value"]
+
+  - name: "clear_cookies"
+    description: "清除所有 Cookie"
+    patterns:
+      - "清除Cookie"
+    template: |
+      await $context.context.clearCookies()
+    validation:
+      required: []
+
+  # ==========================================================================
+  # 执行 JavaScript
+  # ==========================================================================
+
+  - name: "execute_script"
+    description: "在页面执行 JavaScript"
+    patterns:
+      - "执行JS~{script}"
+      - "执行脚本~{script}"
+    template: |
+      await $page.evaluate(() => { {script} })
+    validation:
+      required: ["script"]
+    examples:
+      - "执行JS~console.log('Hello')"
+
+  - name: "evaluate_with_result"
+    description: "执行 JavaScript 并返回结果"
+    patterns:
+      - "计算~{script}"
+      - "执行并返回~{script}"
+    template: |
+      await $page.evaluate(() => { return {script}; })
+    validation:
+      required: ["script"]
+
+  # ==========================================================================
+  # 对话框处理
+  # ==========================================================================
+
+  - name: "accept_dialog"
+    description: "接受对话框（alert/confirm）"
+    patterns:
+      - "接受对话框"
+      - "确认对话框"
+    template: |
+      await (async () => {
+        $page.once('dialog', dialog => dialog.accept());
+        return true;
+      })()
+    validation:
+      required: []
+
+  - name: "dismiss_dialog"
+    description: "取消对话框"
+    patterns:
+      - "取消对话框"
+      - "拒绝对话框"
+    template: |
+      await (async () => {
+        $page.once('dialog', dialog => dialog.dismiss());
+        return true;
+      })()
+    validation:
+      required: []
+
+  - name: "accept_dialog_with_text"
+    description: "接受对话框并输入文本（prompt）"
+    patterns:
+      - "对话框输入~{text}"
+    template: |
+      await (async () => {
+        $page.once('dialog', dialog => dialog.accept('{text}'));
+        return true;
+      })()
+    validation:
+      required: ["text"]
+
+  # ==========================================================================
+  # 网络相关
+  # ==========================================================================
+
+  - name: "wait_for_response"
+    description: "等待指定 URL 的响应"
+    patterns:
+      - "等待响应~{urlPattern}"
+      - "等待接口~{urlPattern}"
+    template: |
+      await $page.waitForResponse(response => response.url().includes('{urlPattern}'), { timeout: 30000 })
+    validation:
+      required: ["urlPattern"]
+
+  - name: "wait_for_request"
+    description: "等待指定 URL 的请求"
+    patterns:
+      - "等待请求~{urlPattern}"
+    template: |
+      await $page.waitForRequest(request => request.url().includes('{urlPattern}'), { timeout: 30000 })
+    validation:
+      required: ["urlPattern"]
+
+  # ==========================================================================
+  # 视口与设备模拟
+  # ==========================================================================
+
+  - name: "set_viewport"
+    description: "设置视口大小"
+    patterns:
+      - "设置视口~{width}~{height}"
+      - "设置分辨率~{width}~{height}"
+    template: |
+      await $page.setViewportSize({ width: parseInt('{width}'), height: parseInt('{height}') })
+    validation:
+      required: ["width", "height"]
+    examples:
+      - "设置视口~1920~1080"
+
+  # ==========================================================================
+  # 性能与调试
+  # ==========================================================================
+
+  - name: "get_performance"
+    description: "获取页面性能指标"
+    patterns:
+      - "获取性能指标"
+      - "性能分析"
+    template: |
+      await (async () => {
+        const metrics = await $page.evaluate(() => {
+          const perf = window.performance;
+          const timing = perf.timing;
+          return {
+            domContentLoaded: timing.domContentLoadedEventEnd - timing.navigationStart,
+            loadComplete: timing.loadEventEnd - timing.navigationStart,
+            firstPaint: perf.getEntriesByType('paint')[0]?.startTime || 0
+          };
+        });
+        return metrics;
+      })()
+    validation:
+      required: []
+
+  - name: "log_console"
+    description: "监听并记录控制台消息"
+    patterns:
+      - "监听控制台"
+      - "记录日志"
+    template: |
+      await (async () => {
+        const logs = [];
+        $page.on('console', msg => logs.push({ type: msg.type(), text: msg.text() }));
+        return logs;
+      })()
+    validation:
+      required: []
+
+  # ==========================================================================
+  # 数据保存
+  # ==========================================================================
+
+  - name: "save_json"
+    description: "保存数据为 JSON 文件"
+    patterns:
+      - "保存JSON~{filename}~{data}"
+      - "导出JSON~{filename}~{data}"
+    template: |
+      await (async () => {
+        fs.mkdirSync('results/data', { recursive: true });
+        const filePath = path.join(process.cwd(), 'results/data', '{filename}.json');
+        fs.writeFileSync(filePath, JSON.stringify({data}, null, 2));
+        console.log(\`   💾 数据已保存: \${filePath}\`);
+        return filePath;
+      })()
+    validation:
+      required: ["filename", "data"]
+
+  - name: "read_json"
+    description: "读取 JSON 文件"
+    patterns:
+      - "读取JSON~{filename}"
+    template: |
+      await (async () => {
+        const filePath = path.join(process.cwd(), 'results/data', '{filename}.json');
+        const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        return data;
+      })()
+    validation:
+      required: ["filename"]
+
+  # ==========================================================================
+  # AI 代理任务
+  # ==========================================================================
+
+  - name: "default_agent"
+    description: "AI 代理执行复杂任务链"
+    patterns:
+      - "代理~{action}"
+      - "智能执行~{action}"
+    template: |
+      await $stagehand.agent('{action}')
+    validation:
+      required: ["action"]
+    examples:
+      - "代理~登录系统并找到最新的订单"
+      - "智能执行~填写表单并提交"
+
+  # ==========================================================================
+  # 自定义脚本
+  # ==========================================================================
+
+  - name: "default_script"
+    description: "执行自定义脚本块"
+    patterns:
+      - "脚本~{script}"
     template: |
       await (async () => { {script} })()
     validation:
-      required: ["action"]
+      required: ["script"]
+    examples:
+      - "脚本~const text = await $page.locator('h1').textContent(); console.log(text);"
+
+  # ==========================================================================
+  # 默认 AI 操作（兜底规则）
+  # ==========================================================================
 
   - name: "default_act"
+    description: "默认 AI 驱动操作（当无其他规则匹配时）"
     patterns:
       - "{action}"
-    template: "await $stagehand.act('{action}',{$page})"
+    template: |
+      await $stagehand.act('{action}', $page)
     validation:
       required: ["action"]
+    examples:
+      - "找到登录按钮并点击"
+      - "滚动到页面底部"
+
+# ============================================================================
+# 使用示例
+# ============================================================================
+#
+# 基础测试流程示例：
+# 
+# 1. 打开~https://example.com
+# 2. 在用户名中输入~admin
+# 3. 在密码中输入~password123
+# 4. 点击~登录按钮
+# 5. 等待~2000~毫秒
+# 6. 断言URL包含~dashboard
+# 7. 截图~保存为~dashboard-page
+# 8. 摘录~提取页面标题
+#
+# 高级测试示例（多标签页）：
+# 
+# 1. 打开~https://example.com
+# 2. 新建标签页~https://example.com/about
+# 3. 列出所有标签页
+# 4. 切换到标签页~About
+# 5. 断言标题~About Us
+# 6. 关闭标签页~About
+#
+# 表单验证示例：
+#
+# 1. 打开~https://example.com/form
+# 2. 填充~#email~test@example.com
+# 3. 勾选~#terms
+# 4. 选择~#country~China
+# 5. 断言已选中~#terms
+# 6. 断言属性~#email~value~test@example.com
+# 7. 点击~提交按钮
+# 8. 等待响应~/api/submit
+# 9. 断言包含文本~.success~提交成功
+#
+# 数据提取示例：
+#
+# 1. 打开~https://example.com/products
+# 2. 摘录~提取所有产品信息~z.array(z.object({name: z.string(), price: z.number()}))
+# 3. 保存JSON~products~$result
+#
+# 复杂场景示例（AI 代理）：
+#
+# 1. 打开~https://example.com
+# 2. 代理~登录系统，找到设置页面，更改语言为中文，然后退出
+#
+# ============================================================================
