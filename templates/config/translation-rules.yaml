@@ -299,7 +299,7 @@ rules:
         fs.mkdirSync('results/screenshots', { recursive: true });
         const filePath = path.join(process.cwd(), 'results/screenshots', '{imagefilename}.png');
         fs.writeFileSync(filePath, screenshotBuffer);
-        console.log(\`   📸 截图已保存: \${filePath}\`);
+        console.log(`   📸 截图已保存: ${filePath}`);
         return filePath;
       })()
     validation:
@@ -801,14 +801,14 @@ rules:
   - name: "execute_script"
     description: "在页面执行 JavaScript"
     patterns:
-      - "执行JS~{script}"
-      - "执行脚本~{script}"
+      - "JS|~{script}"
+      - "脚本|~{script}"
     template: |
       await $page.evaluate(() => { {script} })
     validation:
       required: ["script"]
     examples:
-      - "执行JS~console.log('Hello')"
+      - "JS|~console.log('Hello')"
 
   - name: "evaluate_with_result"
     description: "执行 JavaScript 并返回结果"

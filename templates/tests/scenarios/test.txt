@@ -9,7 +9,7 @@
 打开https://www.baidu.com
 
 "+"
-脚本:const a =3;
+脚本|const a =3;
 const b = a+1;
 console.log(b);
 return b;
@@ -18,7 +18,7 @@ return b;
 点击登录按钮
 
 "+"
-脚本:const a =3;
+JS|const a =3;
 const b = a+1;
 console.log(b);
 return b;

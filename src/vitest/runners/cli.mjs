@@ -282,16 +282,16 @@ function handleInit() {
   console.log('   pnpm add -D vitest @vitest/ui');
   const packageJson = JSON.parse(fs.readFileSync("./package.json", 'utf-8'));
   packageJson.scripts = packageJson.scripts || {};
-  packageJson.scripts['test'] = 'pnpx exec text-tester-by-stagehand test';
-  packageJson.scripts['test:file'] = 'pnpx exec text-tester-by-stagehand test:file';
-  packageJson.scripts['test:changed'] = 'pnpx exec text-tester-by-stagehand test:changed';
-  packageJson.scripts['test:watch'] = 'pnpx exec text-tester-by-stagehand test:watch';
-  packageJson.scripts['test:build'] = 'pnpx exec text-tester-by-stagehand test:build';
-  packageJson.scripts['test:debug'] = 'pnpx exec text-tester-by-stagehand test:debug';
-  packageJson.scripts['test:step'] = 'pnpx exec text-tester-by-stagehand test:step';
-  packageJson.scripts['test:ui'] = 'pnpx exec text-tester-by-stagehand test:ui';
-  packageJson.scripts['config:view'] = 'pnpx exec text-tester-by-stagehand config:view';
-  packageJson.scripts['config:validate'] = 'pnpx exec text-tester-by-stagehand config:validate';
+  packageJson.scripts['test'] = 'pnpm exec text-tester-by-stagehand test';
+  packageJson.scripts['test:file'] = 'pnpm exec text-tester-by-stagehand test:file';
+  packageJson.scripts['test:changed'] = 'pnpm exec text-tester-by-stagehand test:changed';
+  packageJson.scripts['test:watch'] = 'pnpm exec text-tester-by-stagehand test:watch';
+  packageJson.scripts['test:build'] = 'pnpm exec text-tester-by-stagehand test:build';
+  packageJson.scripts['test:debug'] = 'pnpm exec text-tester-by-stagehand test:debug';
+  packageJson.scripts['test:step'] = 'pnpm exec text-tester-by-stagehand test:step';
+  packageJson.scripts['test:ui'] = 'pnpm exec text-tester-by-stagehand test:ui';
+  packageJson.scripts['config:view'] = 'pnpm exec text-tester-by-stagehand config:view';
+  packageJson.scripts['config:validate'] = 'pnpm exec text-tester-by-stagehand config:validate';
   
   packageJson.dependencies = {...packageJson.dependencies, ...selfPackageJson.dependencies};
   packageJson.devDependencies = {...packageJson.devDependencies, ...selfPackageJson.devDependencies}
