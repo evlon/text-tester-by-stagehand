@@ -56,10 +56,18 @@ rules:
       })()
     validation:
       required: ["imagefilename"]
+  - name: "locator_click"
+    patterns:
+      - "技术点击|{selector}"
+    template: |
+      await $page.locator("{selector}").click()
+    validation:
+      required: ["selector"]
 
   - name: "default_extract"
     patterns:
       - "摘录:|{action}"
+      - "摘录：|{action}"
     template: "await $stagehand.extract('{action}')"
     validation:
       required: ["action"]
@@ -67,6 +75,7 @@ rules:
   - name: "default_extract_with_schema"
     patterns:
       - "摘录:|{action}|{schema}"
+      - "摘录：|{action}|{schema}"
     template: "await $stagehand.extract('{action}',{schema})"
     validation:
       required: ["action","schema"]
@@ -74,6 +83,7 @@ rules:
   - name: "default_observe"
     patterns:
       - "观察:|{action}"
+      - "观察：|{action}"
     template: "await $stagehand.observe('{action}')"
     validation:
       required: ["action"]
@@ -81,6 +91,7 @@ rules:
   - name: "default_observe_expect"
     patterns:
       - "断言:|{action}"
+      - "断言：|{action}" 
     template: |
       await (async () => {
         /* actions example
@@ -109,6 +120,7 @@ rules:
   - name: "default_agent"
     patterns:
       - "代理:|{action}"
+      - "代理：|{action}"
     template: "await $stagehand.agent('{action}')"
     validation:
       required: ["action"]
@@ -116,14 +128,18 @@ rules:
   - name: "context_newPage"
     patterns:
       - "标签:|新页面|{url}"
+      - "标签：|新页面|{url}"
       - "上下文:|新页面|{url}"
+      - "上下文：|新页面|{url}"
     template: "await $context.newPage('{url}')"
     validation:
       required: ["url"]
   - name: "context_pages"
     patterns:
       - "标签:|全部页面"
-      - "上下文:|全部页面"      
+      - "标签：|全部页面"
+      - "上下文:|全部页面" 
+      - "上下文：|全部页面"       
     template: |
       await (async () => {
         const retArray = [];
@@ -140,7 +156,9 @@ rules:
   - name: "context_Pages_by_title"
     patterns:
       - "标签:|全部页面|{title}"
-      - "上下文:|全部页面|{title}"
+      - "标签：|全部页面|{title}"
+      - "上下文:|全部页面|{title}" 
+      - "上下文：|全部页面|{title}"       
     template: |
       await (async () => {
         const retArray = [];
@@ -159,7 +177,9 @@ rules:
   - name: "context_close_pages_by_title"
     patterns:
       - "标签:|关闭页面|{title}"
-      - "上下文:|关闭页面|{title}"
+      - "标签：|关闭页面|{title}"
+      - "上下文:|关闭页面|{title}" 
+      - "上下文：|关闭页面|{title}"         
     template: |
       await (async () => {
         const retArray = [];
@@ -178,7 +198,9 @@ rules:
   - name: "context_active_page_by_title"
     patterns:
       - "标签:|切换页面|{title}"
-      - "上下文:|切换页面|{title}"
+      - "标签：|切换页面|{title}"
+      - "上下文:|切换页面|{title}" 
+      - "上下文：|切换页面|{title}"
     template: |
       await (async () => {
         const pages = $context.pages();
@@ -198,6 +220,7 @@ rules:
   - name: "default_script"
     patterns:
       - "脚本:{script}"
+      - "脚本：{script}"
     template: |
       await (async () => { {script} })()
     validation:
